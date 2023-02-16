@@ -1,0 +1,158 @@
+results = [
+  {
+    'assetName': 'iaasa00020143',
+    'verumIdentifier': '202401466',
+    'application': [
+      {
+        'techGroupOwner': 'PS - Application Integration & Streaming',
+        'verumIdentifier': '88153:64058',
+        'contact': [
+          {
+            'contactType': 'L2 Operate Manager',
+            'sid': 'O636774',
+            'verumIdentifier': '88153:64058_L2 Operate Manager_O636774'
+          },
+          {
+            'contactType': 'Deployment Owner',
+            'sid': 'O636774',
+            'verumIdentifier': '88153:64058_Deployment Owner_O636774'
+          }
+        ]
+      },
+    ],
+    'billToOrganization': [
+      {
+        'costCenter': '30736',
+        'isPrimary': 'Yes',
+        'verumIdentifier': '202401466_30736',
+        'organization': [
+          {
+            'cioLOB': 'GTI',
+            'verumIdentifier': '30736'
+          },
+          {
+            'cioLOB': 'CIB',
+            'verumIdentifier': '30736'
+          }
+        ],
+      },
+      {
+        'costCenter': '30736!!',
+        'isPrimary': 'Yes!!',
+        'verumIdentifier': '202401466_30736!!',
+        'organization': [
+          {
+            'cioLOB': 'GTI!!',
+            'verumIdentifier': '30736!!'
+          },
+          {
+            'cioLOB': 'CIB!!',
+            'verumIdentifier': '30736!!'
+          }
+        ],
+      },
+    ],
+    'deployment': {
+      'address': {
+        'region': 'APAC',
+        'verumIdentifier': '33315'
+      },
+      'verumIdentifier': '202401466'
+    },
+    'platformCatalog': {
+      'manufacturer': 'REDHAT',
+      'verumIdentifier': '55362'
+    }
+  },
+  {
+    'assetName': 'iaasa00020143@@@@',
+    'verumIdentifier': '202401466@@@@@',
+    'application': [
+      {
+        'techGroupOwner': 'PS - Application Integration & Streaming@@@@@',
+        'verumIdentifier': '88153:64058@@@@@',
+        'contact': [
+          {
+            'contactType': 'L2 Operate Manager@@@@',
+            'sid': 'O636774@@@@',
+            'verumIdentifier': '88153:64058_L2 Operate Manager_O636774@@@'
+          },
+          {
+            'contactType': 'Deployment Owner@@@@',
+            'sid': 'O636774@@@@',
+            'verumIdentifier': '88153:64058_Deployment Owner_O636774@@@'
+          }
+        ]
+      },
+    ],
+      'billToOrganization': [
+        {
+          'costCenter': '30736@@@@',
+          'isPrimary': 'Yes@@@@',
+          'verumIdentifier': '202401466_30736@@@@',
+          'organization': [
+            {
+              'cioLOB': 'GTI@@@@',
+              'verumIdentifier': '30736@@@'
+            },
+            {
+              'cioLOB': 'CIB@@@@',
+              'verumIdentifier': '30736@@@'
+            }
+          ]
+        },
+      ],
+      'deployment': {
+        'address': {
+          'region': 'APAC@@@@',
+          'verumIdentifier': '33315@@@'
+        },
+        'verumIdentifier': '202401466@@@'
+      },
+      'platformCatalog': {
+        'manufacturer': 'REDHAT@@@@',
+        'verumIdentifier': '55362@@@'
+      }
+  }
+]
+
+import pandas as pd
+from pprint import pprint
+import itertools
+
+def normalize_dict(results, is_meta):
+    li = []
+    for rec in results:
+        for key, val in rec.items():
+            if isinstance(val, list):
+                if is_meta:
+                    application_df = pd.json_normalize(rec, meta=['verumIdentifier', 'platformCatalog', 'deployment', 'assetName'],errors='ignore').explode(key)
+                else:
+                    application_df = pd.json_normalize(rec, errors='ignore').explode(key)
+                application_df = pd.concat([application_df.drop([key], axis=1).reset_index(drop=True), pd.json_normalize(application_df[key])],axis=1)
+                application_df.drop(columns=['verumIdentifier'], inplace=True)
+                rec = application_df.to_dict('records')
+                # print(rec)
+        li.append(application_df.to_dict('records'))
+    return li
+# pprint(li)
+
+data = normalize_dict(results, True)
+data = list(itertools.chain(*data))
+final_result = normalize_dict(data, False)
+pprint(list(itertools.chain(*final_result)))
+# pprint(final_result)
+
+
+
+
+
+application_df = pd.json_normalize(results, meta=['verumIdentifier', 'platformCatalog', 'deployment', 'assetName'], errors='ignore').explode('application').explode('billToOrganization')
+application_df1 = pd.concat([application_df.drop(['application', 'billToOrganization'], axis=1).reset_index(drop=True), pd.json_normalize(application_df.application), pd.json_normalize(application_df.billToOrganization)], axis=1)
+application_df1.drop(columns=['verumIdentifier'], inplace=True)
+# pprint(application_df1.to_dict('records'))
+
+application_df1 = application_df1.explode('contact').explode('organization')
+application_df1 = pd.concat([application_df1.drop(['contact', 'organization'], axis=1).reset_index(drop=True), pd.json_normalize(application_df1.contact), pd.json_normalize(application_df1.organization)], axis=1)
+# application_df1.drop(columns=['verumIdentifier'], inplace=True)
+
